@@ -1,0 +1,12 @@
+[Unit]
+Description=Ap Setup
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root
+ExecStart=/root/ap_setup.sh
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

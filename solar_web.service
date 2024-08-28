@@ -1,0 +1,13 @@
+[Unit]
+Description=Solar Dashboard
+After=network.target
+
+[Service]
+User=pi
+WorkingDirectory=/var/www/
+Environment=FLASK_CONFIG=production
+ExecStart=/usr/bin/python3 /var/www/srv.py
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
