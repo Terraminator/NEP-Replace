@@ -1,0 +1,176 @@
+<html>
+    <head>
+        <title>Not Exactly Pretty Viewer</title>
+        <script src="/plotly-latest.min.js"></script>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                background-color: #f4f4f4;
+                margin: 0;
+                padding: 20px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            h1 {
+                margin-bottom: 20px;
+                color: #333;
+            }
+
+            label {
+                margin: 10px 0 5px;
+                display: block;
+                font-weight: bold;
+                color: #555;
+            }
+
+            input[type="datetime-local"] {
+                padding: 10px;
+                font-size: 16px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                margin-bottom: 10px;
+                width: 100%;
+                max-width: 300px;
+            }
+
+            button {
+                padding: 10px 20px;
+                font-size: 16px;
+                color: #fff;
+                background-color: #007bff;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                transition: background-color 0.3s;
+                margin-bottom: 20px;
+            }
+
+            button:hover {
+                background-color: #0056b3;
+            }
+
+            .chart-container {
+                width: 100%;
+                max-width: 700px;
+                margin: 20px 0;
+                border-radius: 8px;
+                overflow: hidden;
+                background-color: #fff;
+                box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+                padding: 20px;
+            }
+        </style>
+    </head>
+    <body>
+        <label for="time1">Begin of plot</label>
+        <input type="datetime-local" id="time1" name="time1" value="" />
+        <label for="time2">End of plot</label>
+        <input type="datetime-local" id="time2" name="time2" value="" />
+        <button
+            type="button"
+            onclick="render_diagrams(time1.value, time2.value)"
+        >
+            Render Diagrams
+        </button>
+        <div id="PowerPlot" style="width: 100%; max-width: 700px"></div>
+        <div id="EnergyPlot" style="width: 100%; max-width: 700px"></div>
+
+        <script>
+            function toDateTimeInputValue(dateObject, hours, minutes) {
+                const local = new Date(dateObject);
+                local.setHours(hours, minutes, 0, 0); // Set the specific hours and minutes
+                local.setMinutes(
+                    local.getMinutes() - local.getTimezoneOffset(),
+                );
+                return local.toISOString().slice(0, 16);
+            }
+            async function get_power_data(start, end) {
+                try {
+                    const response = await fetch("/api/" + start + "/" + end);
+                    const data = await response.json();
+                    console.log("get_power_data:");
+                    console.log(data);
+                    return data;
+                } catch (e) {
+                    console.error(e);
+                    return {};
+                }
+            }
+
+            async function render_diagrams(start, end) {
+                const raw_power_data = await get_power_data(
+                    Math.floor(new Date(start).getTime()),
+                    Math.floor(new Date(end).getTime()),
+                );
+                console.log("render_diagrams:");
+                console.log(raw_power_data);
+
+                const xArray_ = Object.keys(raw_power_data);
+                const yArray = Object.values(raw_power_data);
+                console.log(xArray_);
+                console.log(yArray);
+                const xArray = xArray_.map((x) => new Date(Number(x)));
+                const data = [
+                    {
+                        x: xArray,
+                        y: yArray,
+                        autorange: true,
+                        mode: "lines",
+                    },
+                ];
+
+                const layout = {
+                    xaxis: { autorange: true, title: "Time" },
+                    yaxis: { autorange: true, title: "Power(W)" },
+                    title: "Power-Time Diagram",
+                };
+
+                Plotly.newPlot("PowerPlot", data, layout);
+
+                let yArray2 = [];
+                for (let i = 0; i < yArray.length; i++) {
+                    if (i == 0) {
+                        yArray2.push(0);
+                    } else {
+                        yArray2.push(
+                            ((yArray[i] + yArray[i - 1]) *
+                                (Math.abs(xArray[i] - xArray[i - 1]) / 1000)) /
+                                2 /
+                                3600 +
+                                yArray2[i - 1],
+                        );
+                    }
+                }
+
+                const data2 = [
+                    {
+                        x: xArray,
+                        y: yArray2,
+                        mode: "lines",
+                        autorange: true,
+                    },
+                ];
+
+                const layout2 = {
+                    xaxis: { autorange: true, title: "Time" },
+                    yaxis: { autorange: true, title: "Energy(Wh)" },
+                    title: "Energy-Time Diagram",
+                };
+
+                Plotly.newPlot("EnergyPlot", data2, layout2);
+            }
+            document.getElementById("time1").value = toDateTimeInputValue(
+                new Date(),
+                0,
+                0,
+            );
+            document.getElementById("time2").value = toDateTimeInputValue(
+                new Date(),
+                24,
+                0,
+            );
+        </script>
+    </body>
+</html>
